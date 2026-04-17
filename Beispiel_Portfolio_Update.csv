@@ -1,0 +1,19 @@
+Diagramm,Kategorie,Wert
+Mieteinnahmen,Wohnungen,135000
+Mieteinnahmen,Gewerbe,42000
+Mieteinnahmen,Garagen/Stellplätze,22500
+Mieteinnahmen,Lager,15000
+Kostenverteilung,Personal,19500
+Kostenverteilung,Instandhaltung,12000
+Kostenverteilung,Versicherung,5900
+Kostenverteilung,Energie,13800
+Kostenverteilung,IT & Verwaltung,2100
+Kostenverteilung,Sonstiges,4500
+Vertragsarten,Unbefristete Verträge,112
+Vertragsarten,Zeitverträge,18
+Vertragsarten,Gewerbemietverträge,22
+Vertragsarten,Kurzzeitmiete,5
+Ticket-Status,Erledigt,280
+Ticket-Status,In Bearbeitung,15
+Ticket-Status,Offen,4
+Ticket-Status,Eskaliert,0
