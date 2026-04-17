@@ -4,18 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0d0f0e">
+<meta name="description" content="Immobilien-Dashboard — Christian Hoffmann · Verwaltung, Analyse & Prozesse">
 <title>Immobilien Verwaltung — Christian Hoffmann</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&display=swap"
+      rel="stylesheet" media="print" onload="this.media='all'">
+<noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+</noscript>
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
 
-<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
   :root {
@@ -26,7 +31,7 @@
     --gold:      #c9a84c;
     --gold2:     #e8c97a;
     --sage:      #7aab8c;
-    --muted:     #6a7a72;
+    --muted:     #6a7a72; /* aufgehellt für WCAG AA Kontrast */
     --text:      #e8ede9;
     --text2:     #9aada3;
     --accent:    #d4614a;
@@ -49,6 +54,16 @@
     padding: 2.5rem 3rem 2rem;
     border-bottom: 1px solid var(--border);
     background: linear-gradient(135deg, #0d0f0e 0%, #141a17 100%);
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,168,76,.12) 0%, transparent 70%);
+    pointer-events: none;
   }
   .header-inner { display: flex; align-items: center; gap: 2rem; position: relative; }
   .logo-badge {
@@ -58,12 +73,15 @@
     display: flex; align-items: center; justify-content: center;
     font-family: 'Playfair Display', serif;
     font-size: 1.6rem; color: var(--gold);
+    flex-shrink: 0;
     background: rgba(201,168,76,.06);
   }
   .header-text h1 {
     font-family: 'Playfair Display', serif;
     font-size: 1.9rem; font-weight: 600;
+    letter-spacing: .02em;
     color: var(--text);
+    line-height: 1.1;
   }
   .header-text .sub {
     font-size: .72rem; color: var(--gold); letter-spacing: .18em;
@@ -71,217 +89,1235 @@
   }
   .header-meta {
     margin-left: auto; text-align: right;
-    font-size: .7rem; color: var(--text2);
+    font-size: .7rem; color: var(--text2); line-height: 1.8;
   }
+  .header-meta strong { color: var(--gold); font-size: .85rem; font-family: 'Playfair Display', serif; }
 
   /* ── Nav Tabs ── */
   nav {
-    display: flex; border-bottom: 1px solid var(--border);
-    background: var(--surface); padding: 0 2rem;
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 2rem;
+    overflow-x: auto;
   }
   nav button {
     background: none; border: none; cursor: pointer;
     color: var(--text2); font-family: 'DM Mono', monospace;
-    font-size: .7rem; text-transform: uppercase;
-    padding: 1rem 1.4rem; border-bottom: 2px solid transparent;
+    font-size: .7rem; letter-spacing: .12em; text-transform: uppercase;
+    padding: 1rem 1.4rem;
+    border-bottom: 2px solid transparent;
     transition: all .25s; white-space: nowrap;
+    display: flex; align-items: center; gap: .5rem;
   }
+  nav button:hover { color: var(--text); }
   nav button.active { color: var(--gold); border-bottom-color: var(--gold); }
+  nav button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: -2px;
+  }
+  .tab-icon { font-size: .9rem; }
 
   /* ── Main Content ── */
   main { padding: 2.5rem 3rem; max-width: 1400px; margin: 0 auto; }
+
   .section { display: none; animation: fadeIn .4s ease; }
   .section.active { display: block; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-  .section-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--text); margin-bottom: .4rem; }
-  .section-desc { font-size: .95rem; color: var(--text2); margin-bottom: 2rem; font-family: 'Cormorant Garamond', serif; font-style: italic; }
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem; font-weight: 600;
+    margin-bottom: .4rem;
+    color: var(--text);
+  }
+  .section-desc {
+    font-size: .95rem;
+    color: var(--text2);
+    margin-bottom: 2rem;
+    letter-spacing: .05em;
+    font-style: italic;
+    font-family: 'Cormorant Garamond', serif;
+  }
 
-  /* ── Dropzone & Toast ── */
+  /* ── NEU: Dropzone ── */
   .dropzone {
-    background: var(--surface); border: 1px dashed var(--border); border-radius: var(--r);
-    padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem;
-    margin-bottom: 2rem; transition: all 0.25s; cursor: pointer;
+    border: 2px dashed var(--border);
+    border-radius: var(--r);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    background: rgba(20, 24, 22, 0.5);
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
   }
-  .dropzone:hover, .dropzone.hover { border-color: var(--gold); background: rgba(201,168,76,.05); color: var(--gold); }
-  
-  #toast {
-    visibility: hidden; min-width: 250px; background: var(--surface); color: var(--gold);
-    text-align: center; border: 1px solid var(--border); border-radius: var(--r);
-    padding: 1rem; position: fixed; right: 2rem; bottom: 2rem; font-size: 0.85rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000;
+  .dropzone.dragover {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.05);
+    transform: scale(1.01);
   }
-  #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+  .dropzone .dz-icon {
+    font-size: 2rem;
+    color: var(--gold);
+  }
+  .dropzone .dz-title {
+    font-size: 0.9rem;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .dropzone .dz-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
 
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.8rem; margin-bottom: 1.5rem; }
-  .card-title { font-size: .65rem; text-transform: uppercase; color: var(--gold); margin-bottom: 1.2rem; display: flex; align-items: center; gap: .6rem; }
-  .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  /* ── NEU: Toast Notifications ── */
+  .toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .toast {
+    background: var(--surface);
+    border-left: 4px solid var(--gold);
+    color: var(--text);
+    padding: 1rem 1.5rem;
+    border-radius: 6px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    font-size: 0.8rem;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .toast.success { border-left-color: var(--sage); }
+  .toast.error { border-left-color: var(--accent); }
 
-  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 1.2rem 1.4rem; border-top: 2px solid var(--gold); }
-  .stat-val { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--text); }
-  .stat-label { font-size: .63rem; color: var(--text2); margin-top: .3rem; text-transform: uppercase; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1.8rem;
+    margin-bottom: 1.5rem;
+  }
+  .card-title {
+    font-size: .65rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--gold);
+    margin-bottom: 1.2rem; display: flex; align-items: center; gap: .6rem;
+  }
+  .card-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
 
+  /* ── BPMN ── */
+  .bpmn-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 1rem;
+    width: 100%;
+  }
+
+  .bpmn-horizontal .mermaid svg {
+    min-width: 2400px !important;
+    height: auto !important;
+  }
+  .bpmn-vertical .mermaid svg {
+    max-width: 500px !important;
+    min-width: unset !important;
+    display: block;
+    margin: 0 auto;
+    height: auto !important;
+  }
+
+  .mermaid { background: transparent !important; }
+  .mermaid:not([data-processed="true"]) { color: transparent; }
+
+  /* ── C4 Model ── */
+  .c4-canvas {
+    width: 100%; min-height: 520px;
+    display: grid; grid-template-columns: 1fr 2fr 1fr;
+    gap: 1.5rem; align-items: start;
+  }
+  .c4-col { display: flex; flex-direction: column; gap: 1rem; }
+  .c4-col.center { gap: 1.2rem; }
+
+  .c4-person {
+    background: #1e2520; border: 1px solid var(--sage);
+    border-radius: 8px; padding: 1rem 1.2rem;
+    text-align: center;
+  }
+  .c4-person .icon { font-size: 2rem; margin-bottom: .4rem; }
+  .c4-person .name { font-size: .8rem; color: var(--text); font-weight: 500; }
+  .c4-person .role { font-size: .65rem; color: var(--text2); margin-top: .2rem; }
+
+  .c4-system-boundary {
+    border: 2px dashed var(--gold);
+    border-radius: 10px; padding: 1.2rem;
+    position: relative;
+  }
+  .c4-system-boundary .boundary-label {
+    position: absolute; top: -10px; left: 12px;
+    background: var(--card); padding: 0 .5rem;
+    font-size: .62rem; color: var(--gold); letter-spacing: .15em; text-transform: uppercase;
+  }
+  .c4-containers { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .c4-box {
+    background: #1a2420; border: 1px solid var(--border);
+    border-radius: 6px; padding: .9rem;
+    border-left: 3px solid var(--gold);
+  }
+  .c4-box.ext { border-left-color: var(--accent); background: #1e1a18; }
+  .c4-box .bname { font-size: .78rem; color: var(--text); font-weight: 500; }
+  .c4-box .btype { font-size: .6rem; color: var(--gold); margin: .15rem 0; letter-spacing: .1em; }
+  .c4-box .bdesc { font-size: .65rem; color: var(--text2); line-height: 1.5; }
+
+  .c4-arrow {
+    display: flex; align-items: center; justify-content: center;
+    font-size: .65rem; color: var(--muted); gap: .4rem;
+    padding: .2rem 0;
+  }
+  .c4-arrow::before, .c4-arrow::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--muted), transparent);
+  }
+
+  .c4-external-col { display: flex; flex-direction: column; gap: 1rem; }
+  .c4-ext-box {
+    background: #1e1a18; border: 1px solid #3a2a25;
+    border-radius: 8px; padding: 1rem;
+    border-left: 3px solid var(--accent);
+  }
+  .c4-ext-box .ename { font-size: .78rem; color: var(--text); }
+  .c4-ext-box .etype { font-size: .6rem; color: var(--accent); }
+  .c4-ext-box .edesc { font-size: .63rem; color: var(--text2); margin-top: .2rem; }
+
+  /* ── Fixkosten ── */
+  .fixkosten-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .fixkosten-item {
+    background: #141a17; border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.1rem;
+    display: flex; flex-direction: column; gap: .4rem;
+    transition: border-color .2s;
+  }
+  .fixkosten-item:hover { border-color: var(--gold); }
+  .fk-label { font-size: .65rem; color: var(--text2); letter-spacing: .1em; text-transform: uppercase; }
+  .fk-value { font-size: 1.4rem; color: var(--gold); font-family: 'Playfair Display', serif; }
+  .fk-sub { font-size: .62rem; color: var(--muted); }
+  .fk-bar { height: 3px; background: var(--border); border-radius: 99px; margin-top: .4rem; }
+  .fk-bar-fill { height: 100%; border-radius: 99px; background: var(--gold); transition: width .8s ease; }
+
+  /* ── Pie Chart ── */
   .pie-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center; }
   .pie-canvas-wrap { max-width: 280px; width: 100%; }
   .pie-legend { display: flex; flex-direction: column; gap: .7rem; }
-  .legend-item { display: flex; align-items: center; gap: .8rem; font-size: .75rem; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .legend-item {
+    display: flex; align-items: center; gap: .8rem;
+    font-size: .75rem;
+  }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .legend-label { color: var(--text2); flex: 1; }
+  .legend-pct { color: var(--text); font-weight: 500; }
 
-  .mermaid { background: transparent !important; }
+  /* ── Knowledge Graph ── */
+  #kg-container {
+    width: 100%; height: 520px;
+    background: #101412;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .kg-legend {
+    display: flex; gap: 1.2rem; flex-wrap: wrap;
+    margin-top: 1rem; font-size: .65rem; color: var(--text2);
+  }
+  .kg-legend-item { display: flex; align-items: center; gap: .4rem; }
+  .kg-dot { width: 10px; height: 10px; border-radius: 50%; }
 
-  @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 2rem; opacity: 1;} }
-  @keyframes fadeout { from {bottom: 2rem; opacity: 1;} to {bottom: 0; opacity: 0;} }
+  /* ── Stats Row ── */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 1.2rem 1.4rem;
+    border-top: 2px solid var(--gold);
+    transition: all 0.3s;
+  }
+  .stat-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem; color: var(--text);
+    transition: color 0.3s;
+  }
+  .stat-label { font-size: .63rem; color: var(--text2); margin-top: .3rem; letter-spacing: .1em; text-transform: uppercase; }
+  .stat-change { font-size: .65rem; color: var(--sage); margin-top: .4rem; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    main { padding: 1.5rem; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .c4-canvas { grid-template-columns: 1fr; }
+    .pie-layout { grid-template-columns: 1fr; }
+    header { padding: 1.5rem; }
+    .header-meta { display: none; }
+  }
 </style>
 </head>
 <body>
 
 <header>
   <div class="header-inner">
-    <div class="logo-badge">CH</div>
+    <div class="logo-badge" aria-hidden="true">CH</div>
     <div class="header-text">
       <h1>Immobilien Verwaltung</h1>
       <div class="sub">Management · Analyse · Prozesse</div>
     </div>
     <div class="header-meta">
-      <strong>Christian Hoffmann</strong><br>Geschäftsführer<br><span style="color:var(--sage)">● Live Dashboard</span>
+      <strong>Christian Hoffmann</strong><br>
+      Geschäftsführer &amp; Inhaber<br>
+      Stand: April 2026<br>
+      <span style="color:var(--sage)">● Live Dashboard</span>
     </div>
   </div>
 </header>
 
-<nav>
-  <button class="active" data-tab="overview">📊 Übersicht</button>
-  <button data-tab="pie">🥧 Torten & Dropzone</button>
-  <button data-tab="kg">🕸️ Wissensgraph</button>
+<nav role="tablist" aria-label="Dashboard-Navigation">
+  <button role="tab" data-tab="overview" aria-selected="true" aria-controls="overview" id="tab-overview">
+    <span class="tab-icon" aria-hidden="true">📊</span>Übersicht
+  </button>
+  <button role="tab" data-tab="bpmn" aria-selected="false" aria-controls="bpmn" id="tab-bpmn">
+    <span class="tab-icon" aria-hidden="true">⚙️</span>BPMN Prozess
+  </button>
+  <button role="tab" data-tab="c4" aria-selected="false" aria-controls="c4" id="tab-c4">
+    <span class="tab-icon" aria-hidden="true">🏗️</span>C4 Modell
+  </button>
+  <button role="tab" data-tab="fixkosten" aria-selected="false" aria-controls="fixkosten" id="tab-fixkosten">
+    <span class="tab-icon" aria-hidden="true">💶</span>Fixkosten
+  </button>
+  <button role="tab" data-tab="pie" aria-selected="false" aria-controls="pie" id="tab-pie">
+    <span class="tab-icon" aria-hidden="true">🥧</span>Tortendiagramm
+  </button>
+  <button role="tab" data-tab="kg" aria-selected="false" aria-controls="kg" id="tab-kg">
+    <span class="tab-icon" aria-hidden="true">🕸️</span>Wissensgraph
+  </button>
 </nav>
 
 <main>
-  <section id="overview" class="section active">
+
+  <section id="overview" class="section" role="tabpanel" aria-labelledby="tab-overview">
     <h2 class="section-title">Dashboard Übersicht</h2>
+    <p class="section-desc">Echtzeit-Kennzahlen der Immobilienverwaltung Hoffmann — alle Objekte auf einen Blick.</p>
+
+    <div id="data-dropzone" class="dropzone">
+      <div class="dz-icon">📥</div>
+      <div class="dz-title">Daten aktualisieren (Drag & Drop)</div>
+      <div class="dz-sub">Ziehe deine aktuelle .csv oder .xlsx Bank-Export Datei hierher, um KPIs und Diagramme lokal neu zu berechnen.</div>
+    </div>
+
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-val">142</div><div class="stat-label">Einheiten</div></div>
-      <div class="stat-card" style="border-top-color: var(--sage)"><div class="stat-val" id="kpi-miete">€ 184k</div><div class="stat-label">Miete</div></div>
-      <div class="stat-card" style="border-top-color: var(--accent)"><div class="stat-val">7</div><div class="stat-label">Tickets</div></div>
-      <div class="stat-card" style="border-top-color: #7ab0d4"><div class="stat-val">96,5 %</div><div class="stat-label">Quote</div></div>
+      <div class="stat-card">
+        <div class="stat-val" id="kpi-einheiten">142</div>
+        <div class="stat-label">Verwaltete Einheiten</div>
+        <div class="stat-change">↑ +6 seit Q1</div>
+      </div>
+      <div class="stat-card" style="border-top-color: var(--sage)">
+        <div class="stat-val" id="kpi-einnahmen">€ 184k</div>
+        <div class="stat-label">Monatl. Mieteinnahmen</div>
+        <div class="stat-change" id="kpi-einnahmen-change" style="color:var(--sage)">↑ +2,4 %</div>
+      </div>
+      <div class="stat-card" style="border-top-color: var(--accent)">
+        <div class="stat-val" id="kpi-tickets">7</div>
+        <div class="stat-label">Offene Tickets</div>
+        <div class="stat-change" style="color:var(--accent)">↓ 3 kritisch</div>
+      </div>
+      <div class="stat-card" style="border-top-color: #7ab0d4">
+        <div class="stat-val" id="kpi-quote">96,5 %</div>
+        <div class="stat-label">Vermietungsquote</div>
+        <div class="stat-change" style="color:#7ab0d4">Ø Markt: 91 %</div>
+      </div>
     </div>
 
     <div class="card">
-      <div class="card-title">Kostenstruktur Q1 2026</div>
+      <div class="card-title">Monatliche Kostenstruktur (Mermaid)</div>
       <div class="mermaid">
-        xychart-beta
-          title "Kostenstruktur Q1 2026"
-          x-axis ["Jan", "Feb", "Maer"]
-          y-axis "EUR" 0 --> 80000
-          bar [52000, 54500, 57000]
-          line [38000, 39200, 41500]
+xychart-beta
+    title "Kostenstruktur Q1 2026"
+    x-axis ["Jan", "Feb", "Maer"]
+    y-axis "EUR" 0 --> 80000
+    bar [52000, 54500, 57000]
+    line [38000, 39200, 41500]
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+      <div class="card">
+        <div class="card-title">Leerstand nach Kategorie</div>
+        <div class="mermaid">
+pie title Leerstand Verteilung
+    "Wohnungen" : 12
+    "Gewerbe" : 8
+    "Stellplaetze" : 5
+    "Sonstiges" : 3
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Instandhaltung Timeline</div>
+        <div class="mermaid">
+gantt
+    title Instandhaltungsplan 2026
+    dateFormat YYYY-MM-DD
+    section Gebaeude A
+    Dachsanierung     :a1, 2026-02-01, 90d
+    Treppenhausreno.  :a2, after a1, 60d
+    section Gebaeude B
+    Heizungstausch    :b1, 2026-03-01, 60d
+    Fassade           :b2, 2026-06-01, 120d
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="pie" class="section">
-    <h2 class="section-title">Portfolio-Update</h2>
-    <div id="dropzone" class="dropzone">
-      📥 Datei (.xlsx, .csv) hier ablegen oder klicken zur Auswahl.
-      <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display: none;">
+  <section id="bpmn" class="section" role="tabpanel" aria-labelledby="tab-bpmn">
+    <h2 class="section-title">BPMN — Vermietungsprozess</h2>
+    <p class="section-desc">Standardisierter Ablauf von der Anfrage bis zur Schlüsselübergabe — verantwortet von Christian Hoffmann.</p>
+
+    <div class="card bpmn-horizontal">
+      <div class="card-title">Pool: Wohnungsvermietung — Swimlane Übersicht</div>
+      <div class="bpmn-wrap">
+        <div class="mermaid">
+flowchart LR
+    N1([Mietanfrage Eingang]) --> N2[Anfrage pruefen]
+    N2 --> N3{Objekt verfuegbar}
+    N3 -->|Nein| N4[Absage senden]
+    N4 --> N5([Ende])
+    N3 -->|Ja| N6[Besichtigung terminieren]
+    N6 --> N7[Besichtigung durchfuehren]
+    N7 --> N8{Interesse bekundet}
+    N8 -->|Nein| N9[Bewerber ablehnen]
+    N9 --> N10([Ende])
+    N8 -->|Ja| N11[Bonitaetspruefung]
+    N11 --> N12{Bonitaet okay}
+    N12 -->|Nein| N13[Absage mit Begruendung]
+    N13 --> N14([Ende])
+    N12 -->|Ja| N15[Mietvertrag erstellen]
+    N15 --> N16[Vertrag unterzeichnen]
+    N16 --> N17[Kaution verbuchen]
+    N17 --> N18[Schluessel uebergeben]
+    N18 --> N19[Protokoll erstellen]
+    N19 --> N20([Akte anlegen])
+
+    classDef startClass fill:#1e3a2a,stroke:#7aab8c,color:#e8ede9
+    classDef endClass fill:#3a1e1e,stroke:#d4614a,color:#e8ede9
+    classDef taskClass fill:#1a1e1c,stroke:#2a302d,color:#e8ede9
+    classDef gwClass fill:#1e2520,stroke:#c9a84c,color:#c9a84c
+
+    class N1,N20 startClass
+    class N5,N10,N14 endClass
+    class N2,N4,N6,N7,N9,N11,N13,N15,N16,N17,N18,N19 taskClass
+    class N3,N8,N12 gwClass
+        </div>
+      </div>
     </div>
+
+    <div class="card bpmn-vertical">
+      <div class="card-title">BPMN — Instandhaltungsticket Prozess</div>
+      <div class="bpmn-wrap">
+        <div class="mermaid">
+flowchart TB
+    S1([Schaden gemeldet]) --> T1[Ticket anlegen]
+    T1 --> T2{Dringlichkeit}
+    T2 -->|Kritisch| T3[Notfallhandwerker]
+    T2 -->|Normal| T4[Angebote einholen]
+    T3 --> T5[Reparatur durchfuehren]
+    T4 --> T6{Angebot akzeptiert}
+    T6 -->|Nein| T7[Neu verhandeln]
+    T7 --> T4
+    T6 -->|Ja| T8[Auftrag erteilen]
+    T8 --> T5
+    T5 --> T9[Abnahme pruefen]
+    T9 --> T10{Maengel vorhanden}
+    T10 -->|Ja| T11[Nachbesserung fordern]
+    T11 --> T5
+    T10 -->|Nein| T12[Rechnung pruefen]
+    T12 --> T13[Ticket schliessen]
+    T13 --> E1([Abgeschlossen])
+
+    classDef startClass fill:#1e3a2a,stroke:#7aab8c,color:#e8ede9
+    classDef endClass fill:#3a1e1e,stroke:#d4614a,color:#e8ede9
+    classDef taskClass fill:#1a1e1c,stroke:#2a302d,color:#e8ede9
+    classDef gwClass fill:#1e2520,stroke:#c9a84c,color:#c9a84c
+
+    class S1,E1 startClass
+    class T1,T3,T4,T5,T7,T8,T9,T11,T12,T13 taskClass
+    class T2,T6,T10 gwClass
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="c4" class="section" role="tabpanel" aria-labelledby="tab-c4">
+    <h2 class="section-title">C4 Modell — Systemarchitektur</h2>
+    <p class="section-desc">Systemkontext und Container-Diagramm der digitalen Infrastruktur der Immobilienverwaltung Hoffmann.</p>
+
+    <div class="card">
+      <div class="card-title">Level 1 — System Context Diagram</div>
+      <div class="c4-canvas">
+        <div class="c4-col">
+          <div style="font-size:.6rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:.5rem">[Personen]</div>
+          <div class="c4-person">
+            <div class="icon" aria-hidden="true">👨‍💼</div>
+            <div class="name">Christian Hoffmann</div>
+            <div class="role">Geschäftsführer</div>
+          </div>
+          <div class="c4-person">
+            <div class="icon" aria-hidden="true">🏠</div>
+            <div class="name">Mieter</div>
+            <div class="role">Endkunde / Bewohner</div>
+          </div>
+          <div class="c4-person">
+            <div class="icon" aria-hidden="true">🔧</div>
+            <div class="name">Handwerker</div>
+            <div class="role">Dienstleister</div>
+          </div>
+          <div class="c4-person">
+            <div class="icon" aria-hidden="true">🏦</div>
+            <div class="name">Eigentümer</div>
+            <div class="role">Auftraggeber</div>
+          </div>
+        </div>
+
+        <div class="c4-col center">
+          <div style="font-size:.6rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:.5rem">[Software System]</div>
+          <div class="c4-system-boundary">
+            <span class="boundary-label">IVS — Immobilien Verwaltungs System</span>
+            <div class="c4-containers" style="margin-top:.5rem">
+              <div class="c4-box">
+                <div class="bname">Mieter-Portal</div>
+                <div class="btype">[Web Application]</div>
+                <div class="bdesc">Self-Service für Mieter: Tickets, Dokumente, Zahlungen</div>
+              </div>
+              <div class="c4-box">
+                <div class="bname">Admin Backend</div>
+                <div class="btype">[Web Application]</div>
+                <div class="bdesc">Verwaltungsoberfläche für Christian &amp; Team</div>
+              </div>
+              <div class="c4-box">
+                <div class="bname">Buchhaltungs-API</div>
+                <div class="btype">[API / Service]</div>
+                <div class="bdesc">Automatische Nebenkostenabrechnung &amp; Buchungen</div>
+              </div>
+              <div class="c4-box">
+                <div class="bname">Objekt-Datenbank</div>
+                <div class="btype">[Database]</div>
+                <div class="bdesc">Stammdaten aller Objekte, Einheiten &amp; Verträge</div>
+              </div>
+              <div class="c4-box">
+                <div class="bname">Dokument-Service</div>
+                <div class="btype">[File Storage]</div>
+                <div class="bdesc">Verträge, Protokolle, Abrechnungen als PDF</div>
+              </div>
+              <div class="c4-box">
+                <div class="bname">Benachrichtigungs-Hub</div>
+                <div class="btype">[Message Broker]</div>
+                <div class="bdesc">E-Mail, SMS &amp; Push Benachrichtigungen</div>
+              </div>
+            </div>
+          </div>
+          <div class="c4-arrow">REST / HTTPS</div>
+        </div>
+
+        <div class="c4-col">
+          <div style="font-size:.6rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:.5rem">[Externe Systeme]</div>
+          <div class="c4-ext-box">
+            <div class="ename">DATEV</div>
+            <div class="etype">[Buchhaltungssoftware]</div>
+            <div class="edesc">Steuerliche Auswertungen &amp; Jahresabschluss</div>
+          </div>
+          <div class="c4-ext-box">
+            <div class="ename">Immoscout24</div>
+            <div class="etype">[Insertionsplattform]</div>
+            <div class="edesc">Automatischer Inserate-Export bei Leerstand</div>
+          </div>
+          <div class="c4-ext-box">
+            <div class="ename">Schufa API</div>
+            <div class="etype">[Bonitätsprüfung]</div>
+            <div class="edesc">Echtzeit-Bonitätsabfrage für neue Mietinteressenten</div>
+          </div>
+          <div class="c4-ext-box">
+            <div class="ename">Stripe / SEPA</div>
+            <div class="etype">[Zahlungsabwicklung]</div>
+            <div class="edesc">Mieteinzug per Lastschrift &amp; Zahlungsabgleich</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Level 2 — Container Diagram (Admin Backend Zoom)</div>
+      <div class="mermaid">
+graph TD
+    Browser[Browser App] -->|HTTPS| API[REST API]
+    API --> Auth[Auth Service]
+    API --> DB[(PostgreSQL)]
+    API --> Redis[(Redis Cache)]
+    API --> Worker[Background Worker]
+    Worker --> Storage[MinIO Storage]
+    Worker --> Mail[Mailjet Extern]
+    API -->|Buchungsdaten| Datev[DATEV Extern]
+
+    classDef container fill:#1a1e1c,stroke:#c9a84c,color:#e8ede9
+    classDef db fill:#1e2520,stroke:#7aab8c,color:#e8ede9
+    classDef ext fill:#1e1a18,stroke:#d4614a,color:#e8ede9
+
+    class Browser,API,Auth,Worker container
+    class DB,Redis,Storage db
+    class Mail,Datev ext
+      </div>
+    </div>
+  </section>
+
+  <section id="fixkosten" class="section" role="tabpanel" aria-labelledby="tab-fixkosten">
+    <h2 class="section-title">Fixkosten Übersicht</h2>
+    <p class="section-desc">Monatliche Fixkostenstruktur der gesamten Verwaltung — Basis für Betriebskostenabrechnung.</p>
+
+    <div class="fixkosten-grid" id="fk-grid"></div>
+
+    <div class="card">
+      <div class="card-title">Fixkosten Jahresverlauf (Mermaid)</div>
+      <div class="mermaid">
+xychart-beta
+    title "Fixkosten Monatsverlauf 2026"
+    x-axis ["Jan","Feb","Maer","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"]
+    y-axis "EUR" 0 --> 100000
+    bar [72000,73500,74200,75000,75000,76000,76000,76000,77000,77500,78000,79000]
+    line [68000,68000,68000,68000,68000,68000,68000,68000,68000,68000,68000,68000]
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Kostenverteilung nach Gebäude (Mermaid)</div>
+      <div class="mermaid">
+sankey-beta
+Fixkosten Gesamt,Gebaeude A Kaiserstrasse 12,22000
+Fixkosten Gesamt,Gebaeude B Ringweg 4,18000
+Fixkosten Gesamt,Gebaeude C Parkalle 8,15000
+Fixkosten Gesamt,Gewerbeeinheiten,12000
+Fixkosten Gesamt,Verwaltungskosten,5000
+Gebaeude A Kaiserstrasse 12,Hausmeister,4000
+Gebaeude A Kaiserstrasse 12,Versicherung,5000
+Gebaeude A Kaiserstrasse 12,Energie,8000
+Gebaeude A Kaiserstrasse 12,Muellentsorgung,3000
+Gebaeude A Kaiserstrasse 12,Instandhaltungsrueckl.,2000
+      </div>
+    </div>
+  </section>
+
+  <section id="pie" class="section" role="tabpanel" aria-labelledby="tab-pie">
+    <h2 class="section-title">Tortendiagramme — Portfolioanalyse</h2>
+    <p class="section-desc">Verteilung des Immobilienportfolios und der Einnahmenquellen im Überblick.</p>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
       <div class="card">
-        <div class="card-title">Mieteinnahmen</div>
+        <div class="card-title">Mieteinnahmen nach Objekttyp</div>
         <div class="pie-layout">
           <div class="pie-canvas-wrap"><canvas id="pie1"></canvas></div>
           <div class="pie-legend" id="legend1"></div>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Kostenverteilung</div>
+        <div class="card-title">Kostenverteilung Gesamtverwaltung</div>
         <div class="pie-layout">
           <div class="pie-canvas-wrap"><canvas id="pie2"></canvas></div>
           <div class="pie-legend" id="legend2"></div>
         </div>
       </div>
+      <div class="card">
+        <div class="card-title">Mieter-Vertragsarten</div>
+        <div class="pie-layout">
+          <div class="pie-canvas-wrap"><canvas id="pie3"></canvas></div>
+          <div class="pie-legend" id="legend3"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ticket-Status Verteilung</div>
+        <div class="pie-layout">
+          <div class="pie-canvas-wrap"><canvas id="pie4"></canvas></div>
+          <div class="pie-legend" id="legend4"></div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section id="kg" class="section">
-    <h2 class="section-title">Wissensgraph</h2>
-    <div id="kg-container" style="width:100%; height:500px; background:#101412; border-radius:12px; border:1px solid #2a302d;"></div>
+  <section id="kg" class="section" role="tabpanel" aria-labelledby="tab-kg">
+    <h2 class="section-title">Wissensgraph — Entitäten &amp; Beziehungen</h2>
+    <p class="section-desc">Dynamisches Netzwerk aller zentralen Entitäten: Objekte, Personen, Prozesse und Systeme.</p>
+
+    <div class="card" style="padding:1rem">
+      <div class="card-title">Interaktiver Wissensgraph (Drag, Zoom, Klick)</div>
+      <div id="kg-container"></div>
+      <div class="kg-legend">
+        <div class="kg-legend-item"><div class="kg-dot" style="background:#c9a84c"></div> Personen</div>
+        <div class="kg-legend-item"><div class="kg-dot" style="background:#7aab8c"></div> Objekte</div>
+        <div class="kg-legend-item"><div class="kg-dot" style="background:#7ab0d4"></div> Prozesse</div>
+        <div class="kg-legend-item"><div class="kg-dot" style="background:#d4614a"></div> Systeme</div>
+        <div class="kg-legend-item"><div class="kg-dot" style="background:#a47abd"></div> Dokumente</div>
+        <div class="kg-legend-item"><div class="kg-dot" style="background:#d4a44c"></div> Finanzen</div>
+      </div>
+    </div>
+
+    <div class="card" id="kg-detail" style="display:none">
+      <div class="card-title">Ausgewählter Knoten</div>
+      <div id="kg-detail-content" style="font-size:.8rem;line-height:1.9;color:var(--text2)"></div>
+    </div>
   </section>
+
 </main>
 
-<div id="toast"></div>
+<div class="toast-container" id="toast-container"></div>
 
 <script>
-// --- Navigation ---
-function showTab(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.querySelector(`nav button[data-tab="${id}"]`).classList.add('active');
-  if(id === 'pie') initPieCharts();
-  if(id === 'kg') initKG();
+// ── Hilfsfunktionen ──
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
-document.querySelector('nav').addEventListener('click', e => { if(e.target.dataset.tab) showTab(e.target.dataset.tab); });
 
-// --- Mermaid ---
-mermaid.initialize({ startOnLoad: true, theme: 'dark' });
-
-// --- Charts ---
+// Tracking: welche Tabs wurden schon gerendert?
+const initializedTabs = new Set();
+// Speichere die Chart.js Instanzen global ab, damit wir sie live updaten können
 window.myCharts = {};
-const colors = ['#c9a84c','#7aab8c','#7ab0d4','#d4614a','#a47abd'];
 
-function initPieCharts() {
-  if(window.myCharts.chart1) return;
-  const ctx1 = document.getElementById('pie1').getContext('2d');
-  window.myCharts.chart1 = new Chart(ctx1, {
-    type: 'doughnut',
-    data: { labels: ['Wohnungen', 'Gewerbe'], datasets: [{ data: [112000, 38000], backgroundColor: colors }] },
-    options: { plugins: { legend: { display: false } }, cutout: '50%' }
+// ── Toast Notifications ──
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  
+  // Reflow erzwingen
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
+}
+
+// ── Dropzone Logik (FileReader, SheetJS, PapaParse) ──
+const dropzone = document.getElementById('data-dropzone');
+if (dropzone) {
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
   });
-  updateLegend('legend1', ['Wohnungen', 'Gewerbe'], [112000, 38000], '€');
+
+  dropzone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      handleFileDrop(file);
+    }
+  });
 }
 
-function updateLegend(id, labels, data, unit) {
-  const el = document.getElementById(id);
-  el.innerHTML = labels.map((l, i) => `
-    <div class="legend-item">
-      <div class="legend-dot" style="background:${colors[i]}"></div>
-      <span>${l}: ${data[i].toLocaleString()}${unit}</span>
-    </div>`).join('');
-}
-
-// --- Dropzone ---
-const dz = document.getElementById('dropzone');
-const fi = document.getElementById('fileInput');
-dz.onclick = () => fi.click();
-dz.ondragover = e => { e.preventDefault(); dz.classList.add('hover'); };
-dz.ondragleave = () => dz.classList.remove('hover');
-dz.ondrop = e => { e.preventDefault(); dz.classList.remove('hover'); handleFile(e.dataTransfer.files[0]); };
-fi.onchange = e => handleFile(e.target.files[0]);
-
-function handleFile(file) {
+function handleFileDrop(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
   const reader = new FileReader();
-  reader.onload = e => {
-    const data = new Uint8Array(e.target.result);
-    const wb = XLSX.read(data, {type: 'array'});
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    // Beispiel Logik: Nimm erste Zeile für Miete
-    if(rows.length > 0) {
-      const val = rows[0].Wert || 190000;
-      document.getElementById('kpi-miete').innerText = `€ ${(val/1000).toFixed(0)}k`;
-      showToast("Daten aktualisiert!");
+
+  reader.onload = function(e) {
+    try {
+      if (ext === 'csv') {
+        // PapaParse für CSV, konfiguriert für Auto-Erkennung von Trennzeichen und Datentypen
+        Papa.parse(e.target.result, {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: true,
+          complete: function(results) {
+            processData(results.data);
+          },
+          error: function() {
+            showToast('Fehler beim CSV-Parsing.', 'error');
+          }
+        });
+      } else if (ext === 'xlsx' || ext === 'xls') {
+        // SheetJS für Excel
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true }); // ISO Datumsformat Handling
+        const firstSheet = workbook.SheetNames[0];
+        const json = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+        processData(json);
+      } else {
+        showToast('Falsches Dateiformat. Bitte .csv oder .xlsx verwenden.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Kritischer Fehler beim Auslesen.', 'error');
     }
   };
-  reader.readAsArrayBuffer(file);
+
+  if (ext === 'csv') {
+    reader.readAsText(file);
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
 }
 
-function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+function processData(data) {
+  if (!data || data.length === 0) {
+    showToast('Die Datei ist leer oder konnte nicht gelesen werden.', 'error');
+    return;
+  }
 
-// --- Knowledge Graph (Minimale Demo) ---
+  // Fuzzy-Suche nach relevanten Spaltennamen
+  const keys = Object.keys(data[0]);
+  const betragKey = keys.find(k => k.toLowerCase().includes('betrag') || k.toLowerCase().includes('summe')) || keys[1];
+  const katKey = keys.find(k => k.toLowerCase().includes('kategorie') || k.toLowerCase().includes('zweck') || k.toLowerCase().includes('art')) || keys[0];
+
+  let totalEinnahmen = 0;
+  const categorySums = {};
+
+  data.forEach(row => {
+    const betrag = parseFloat(row[betragKey]);
+    const kat = row[katKey] ? String(row[katKey]).trim() : 'Sonstiges';
+    
+    // Logik: Summierung pro Kategorie
+    if (!isNaN(betrag) && betrag > 0) { 
+      totalEinnahmen += betrag;
+      categorySums[kat] = (categorySums[kat] || 0) + betrag;
+    }
+  });
+
+  // 1. KPI Update per DOM Manipulation
+  const einnahmenKpi = document.getElementById('kpi-einnahmen');
+  const einnahmenChange = document.getElementById('kpi-einnahmen-change');
+  
+  if (totalEinnahmen > 0) {
+    // Formatierung in k (Tausender)
+    const formatted = '€ ' + (totalEinnahmen / 1000).toFixed(1).replace('.', ',') + 'k';
+    einnahmenKpi.textContent = formatted;
+    einnahmenKpi.style.color = 'var(--gold)'; // Visuelles Feedback
+    
+    einnahmenChange.textContent = '↑ Live Update';
+    einnahmenChange.style.color = 'var(--sage)';
+  }
+
+  // 2. Chart.js (Pie 1) Update
+  if (window.myCharts['pie1']) {
+    const labels = Object.keys(categorySums);
+    const chartData = Object.values(categorySums);
+    
+    // Fallback Farben
+    const colors = ['#c9a84c','#7aab8c','#7ab0d4','#d4614a','#a47abd','#d4a44c','#4ac9a8','#d47a7a'];
+    const myColors = labels.map((_, i) => colors[i % colors.length]);
+
+    // Chart updaten
+    window.myCharts['pie1'].data.labels = labels;
+    window.myCharts['pie1'].data.datasets[0].data = chartData;
+    window.myCharts['pie1'].data.datasets[0].backgroundColor = myColors;
+    window.myCharts['pie1'].update();
+
+    // Legende neu generieren
+    makeLegend('legend1', labels, chartData, myColors, '€');
+  }
+
+  showToast('Daten erfolgreich verarbeitet! Cockpit aktualisiert.');
+}
+
+// ── Tab Navigation (Event Delegation) ──
+function showTab(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button[role="tab"]').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+
+  const section = document.getElementById(id);
+  if (!section) return;
+  section.classList.add('active');
+
+  const btn = document.querySelector(`nav button[data-tab="${id}"]`);
+  if (btn) {
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+  }
+
+  // Mermaid: Lazy Init mit Reflow-Sicherheit
+  if (!initializedTabs.has(id)) {
+    const mermaidNodes = document.querySelectorAll(`#${id} .mermaid`);
+    if (mermaidNodes.length > 0) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
+          try {
+            if (typeof mermaid !== 'undefined' && mermaid.run) {
+              await mermaid.run({ nodes: mermaidNodes });
+            } else if (typeof mermaid !== 'undefined' && mermaid.init) {
+              mermaid.init(undefined, mermaidNodes);
+            }
+            initializedTabs.add(id);
+          } catch (e) {
+            console.error('Mermaid render failed for tab:', id, e);
+          }
+        });
+      });
+    } else {
+      initializedTabs.add(id);
+    }
+  }
+
+  if (id === 'pie') setTimeout(initPieCharts, 100);
+  if (id === 'kg') setTimeout(initKG, 100);
+}
+
+document.querySelector('nav').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-tab]');
+  if (btn) showTab(btn.dataset.tab);
+});
+
+document.querySelector('nav').addEventListener('keydown', (e) => {
+  const tabs = Array.from(document.querySelectorAll('nav button[role="tab"]'));
+  const current = tabs.indexOf(document.activeElement);
+  if (current === -1) return;
+
+  let next = -1;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    next = (current + 1) % tabs.length;
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    next = (current - 1 + tabs.length) % tabs.length;
+  } else if (e.key === 'Home') {
+    next = 0;
+  } else if (e.key === 'End') {
+    next = tabs.length - 1;
+  }
+
+  if (next !== -1) {
+    e.preventDefault();
+    tabs[next].focus();
+    showTab(tabs[next].dataset.tab);
+  }
+});
+
+// ── Mermaid Init ──
+if (typeof mermaid !== 'undefined') {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'dark',
+    themeVariables: {
+      background: '#0d0f0e', primaryColor: '#1a1e1c', primaryTextColor: '#e8ede9',
+      primaryBorderColor: '#2a302d', lineColor: '#7aab8c', secondaryColor: '#1e2520',
+      tertiaryColor: '#141816', edgeLabelBackground: '#0d0f0e', clusterBkg: '#141816',
+      titleColor: '#c9a84c', fontFamily: 'DM Mono, monospace', fontSize: '15px',
+      pie1: '#c9a84c', pie2: '#7aab8c', pie3: '#7ab0d4', pie4: '#d4614a', pie5: '#a47abd',
+      pieTitleTextSize: '16px', ganttBarHeight: 24,
+    },
+    flowchart: { curve: 'basis', padding: 30 },
+    gantt: { axisFormat: '%b %y' },
+    sankey: { width: 800, height: 650 }
+  });
+}
+
+// ── Fixkosten Data ──
+const fixkostenData = [
+  { label: 'Hausmeister-Service', value: '€ 8.200', sub: 'monatlich, pauschal', pct: 76 },
+  { label: 'Gebäudeversicherung', value: '€ 5.900', sub: 'anteilig pro Monat', pct: 55 },
+  { label: 'Heizung & Energie', value: '€ 14.400', sub: 'alle Objekte', pct: 100 },
+  { label: 'Müll & Entsorgung', value: '€ 2.100', sub: 'kommunale Gebühren', pct: 19 },
+  { label: 'Gartenpflege', value: '€ 1.400', sub: 'März – Oktober', pct: 13 },
+  { label: 'Aufzugswartung', value: '€ 980', sub: '4 Aufzüge', pct: 9 },
+  { label: 'Software & IT', value: '€ 1.850', sub: 'Lizenzen, Server', pct: 17 },
+  { label: 'Steuerberatung', value: '€ 3.200', sub: 'quartalsweise anteilig', pct: 30 },
+  { label: 'Instandhaltungsrücklage', value: '€ 9.600', sub: '€ 67/Einheit/Monat', pct: 89 },
+  { label: 'Büro & Verwaltung', value: '€ 2.400', sub: 'Miete, Bürobedarf', pct: 22 },
+  { label: 'Personalkosten', value: '€ 18.500', sub: '4 Mitarbeiter inkl. AG-Ant.', pct: 95 },
+  { label: 'Notfallreserve', value: '€ 3.000', sub: 'liquide Rücklage', pct: 28 },
+];
+
+function initFixkosten() {
+  const grid = document.getElementById('fk-grid');
+  if (!grid || grid.children.length) return;
+
+  const fragment = document.createDocumentFragment();
+  fixkostenData.forEach(fk => {
+    const item = document.createElement('div');
+    item.className = 'fixkosten-item';
+    item.innerHTML = `
+      <div class="fk-label">${escapeHtml(fk.label)}</div>
+      <div class="fk-value">${escapeHtml(fk.value)}</div>
+      <div class="fk-sub">${escapeHtml(fk.sub)}</div>
+      <div class="fk-bar"><div class="fk-bar-fill" style="width:${Number(fk.pct)}%"></div></div>`;
+    fragment.appendChild(item);
+  });
+  grid.appendChild(fragment);
+}
+initFixkosten();
+
+// ── Globale Legenden-Funktion für Chart.js Updates ──
+function makeLegend(id, labels, data, myColors, unit) {
+  const total = data.reduce((a, b) => a + b, 0);
+  const el = document.getElementById(id);
+  if (!el) return;
+  const fragment = document.createDocumentFragment();
+  labels.forEach((l, i) => {
+    const pct = ((data[i] / total) * 100).toFixed(1);
+    const val = data[i].toLocaleString('de-DE');
+    const u = unit ? ` ${unit}` : '';
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `
+      <div class="legend-dot" style="background:${myColors[i]}"></div>
+      <span class="legend-label">${escapeHtml(l)}</span>
+      <span class="legend-pct">${val}${u} <span style="color:var(--muted); font-weight:normal; margin-left:4px">(${pct} %)</span></span>`;
+    fragment.appendChild(item);
+  });
+  el.innerHTML = '';
+  el.appendChild(fragment);
+}
+
+// ── Pie Charts ──
+let pieInited = false;
+function initPieCharts() {
+  if (pieInited) return;
+  if (typeof Chart === 'undefined') return;
+  pieInited = true;
+
+  const colors = ['#c9a84c','#7aab8c','#7ab0d4','#d4614a','#a47abd','#d4a44c','#4ac9a8','#d47a7a'];
+
+  function filterData(labels, data) {
+    const fLabels = [], fData = [], fColors = [];
+    for (let i = 0; i < data.length; i++) {
+      if (data[i] > 0) {
+        fLabels.push(labels[i]);
+        fData.push(data[i]);
+        fColors.push(colors[i % colors.length]);
+      }
+    }
+    return { fLabels, fData, fColors };
+  }
+
+  const baseOpts = (unit) => ({
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: { display: false },
+      title: { display: false },
+      tooltip: {
+        backgroundColor: '#1a1e1c', borderColor: '#2a302d', borderWidth: 1,
+        titleColor: '#c9a84c', bodyColor: '#e8ede9', padding: 10,
+        callbacks: {
+          label: ctx => {
+            const val = ctx.parsed;
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const pct = ((val / total) * 100).toFixed(1);
+            const u = unit ? ` ${unit}` : '';
+            return ` ${ctx.label}: ${val.toLocaleString('de-DE')}${u} (${pct}%)`;
+          }
+        }
+      }
+    },
+    cutout: '45%',
+    animation: { duration: 800 }
+  });
+
+  function makePie(id, labels, data, myColors, unit) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return null;
+    const ds = { data, backgroundColor: myColors, borderColor: '#141816', borderWidth: 3 };
+    // Neu: Instanzen in window.myCharts speichern
+    window.myCharts[id] = new Chart(canvas, { type: 'doughnut', data: { labels, datasets: [ds] }, options: baseOpts(unit) });
+    return window.myCharts[id];
+  }
+
+  // Initialisieren wir Chart 1
+  const p1lRaw = ['Wohnungen', 'Gewerbe', 'Garagen/Stellplätze', 'Lager'];
+  const p1dRaw = [112000, 38000, 18000, 16000];
+  const f1 = filterData(p1lRaw, p1dRaw);
+  makePie('pie1', f1.fLabels, f1.fData, f1.fColors, '€');
+  makeLegend('legend1', f1.fLabels, f1.fData, f1.fColors, '€');
+
+  const p2lRaw = ['Personal', 'Instandhaltung', 'Versicherung', 'Energie', 'IT & Verwaltung', 'Sonstiges'];
+  const p2dRaw = [18500, 9600, 5900, 14400, 1850, 5750];
+  const f2 = filterData(p2lRaw, p2dRaw);
+  makePie('pie2', f2.fLabels, f2.fData, f2.fColors, '€');
+  makeLegend('legend2', f2.fLabels, f2.fData, f2.fColors, '€');
+
+  const p3lRaw = ['Unbefristete Verträge', 'Zeitverträge', 'Gewerbemietverträge', 'Kurzzeitmiete'];
+  const p3dRaw = [98, 21, 17, 6];
+  const f3 = filterData(p3lRaw, p3dRaw);
+  makePie('pie3', f3.fLabels, f3.fData, f3.fColors, '');
+  makeLegend('legend3', f3.fLabels, f3.fData, f3.fColors, '');
+
+  const p4lRaw = ['Erledigt', 'In Bearbeitung', 'Offen', 'Eskaliert'];
+  const p4dRaw = [214, 18, 7, 3];
+  const f4 = filterData(p4lRaw, p4dRaw);
+  makePie('pie4', f4.fLabels, f4.fData, f4.fColors, '');
+  makeLegend('legend4', f4.fLabels, f4.fData, f4.fColors, '');
+}
+
+// ── Knowledge Graph ──
+let kgInited = false;
 function initKG() {
+  if (kgInited) return;
+  if (typeof vis === 'undefined') return;
+  kgInited = true;
+
+  const COLORS = {
+    person:   { bg: '#c9a84c', border: '#e8c97a', text: '#0d0f0e' },
+    object:   { bg: '#7aab8c', border: '#a8d4b5', text: '#0d0f0e' },
+    process:  { bg: '#7ab0d4', border: '#a8cce8', text: '#0d0f0e' },
+    system:   { bg: '#d4614a', border: '#e89080', text: '#0d0f0e' },
+    document: { bg: '#a47abd', border: '#c8a0e4', text: '#0d0f0e' },
+    finance:  { bg: '#d4a44c', border: '#e8c87a', text: '#0d0f0e' },
+  };
+
+  function n(id, label, type, info) {
+    info = info || label;
+    const c = COLORS[type];
+    return {
+      id, label, title: info,
+      color: { background: c.bg, border: c.border, highlight: { background: c.border, border: '#fff' } },
+      font: { color: c.text, size: 12, face: 'DM Mono' },
+      shape: 'box', borderWidth: 2, margin: 8,
+      shadow: { enabled: true, size: 10, x: 3, y: 3, color: 'rgba(0,0,0,.5)' },
+      info
+    };
+  }
+
+  const nodes = new vis.DataSet([
+    n(1, 'Christian\nHoffmann', 'person', 'Geschäftsführer · Immobilienverwaltung Hoffmann · Hauptverantwortlich für alle operativen Entscheidungen'),
+    n(2, 'Mieter', 'person', 'Endkunden · 142 aktive Mietverhältnisse · Kommunikation via Portal'),
+    n(3, 'Eigentümer', 'person', 'Auftraggeber · Empfänger der Abrechnungen und Berichte'),
+    n(4, 'Hausmeister', 'person', 'Max Berger · Zuständig für Geb. A & B · Erster Ansprechpartner vor Ort'),
+    n(5, 'Buchhalterin', 'person', 'Sandra Koch · Nebenkostenabrechnung & DATEV-Schnittstelle'),
+
+    n(10, 'Geb. A\nKaiserstr. 12', 'object', 'Baujahr 1978 · 48 Wohneinheiten · Zentralheizung saniert 2021'),
+    n(11, 'Geb. B\nRingweg 4', 'object', 'Baujahr 1993 · 36 Wohneinheiten · 2 Gewerbeeinheiten EG'),
+    n(12, 'Geb. C\nParkallee 8', 'object', 'Baujahr 2005 · 28 Wohneinheiten · Tiefgarage 30 Stellplätze'),
+    n(13, 'Gewerbe-\neinheiten', 'object', '17 Gewerbeeinheiten gesamt · 3 Standorte · Büro & Einzelhandel'),
+
+    n(20, 'Vermietungs-\nprozess', 'process', 'BPMN-gesteuert · Anfrage → Bonitätsprüfung → Vertragsabschluss → Übergabe'),
+    n(21, 'Instandhaltung', 'process', 'Ticketbasiert · 3 Prioritätsstufen · SLA: Kritisch <4h, Normal <72h'),
+    n(22, 'Nebenkostenabr.', 'process', 'Jährlich zum 31. März · Automatisiert via Buchhaltungs-API · DATEV-Export'),
+    n(23, 'Bonitätsprüfung', 'process', 'Schufa-API Integration · Automatisierter Score · Schwellenwert 650'),
+
+    n(30, 'IVS Admin\nBackend', 'system', 'Zentrales Verwaltungssystem · Node.js/React · PostgreSQL'),
+    n(31, 'Mieter-Portal', 'system', 'Self-Service Web-App · Tickets, Dokumente, Zahlungsübersicht'),
+    n(32, 'DATEV', 'system', 'Externes Buchhaltungssystem · Steuerberater-Zugang · Jahresabschluss'),
+    n(33, 'Immoscout24', 'system', 'Inseratsplattform · Automatischer Export bei Leerstand via API'),
+    n(34, 'Schufa API', 'system', 'Bonitäts-Echtzeit-Abfrage · REST API · Response <2s'),
+
+    n(40, 'Mietvertrag', 'document', 'Standardformular · PDF-generiert · Digital signierbar · Archiviert in MinIO'),
+    n(41, 'Übergabe-\nprotokoll', 'document', 'Ein- und Auszug · Fotodokumentation · Zählerstände'),
+    n(42, 'Betriebskosten-\nabrechnung', 'document', 'Jährlich · Rechtlich geprüft · Einspruchsfrist 12 Monate'),
+    n(43, 'Wartungsplan', 'document', 'Gantt-basiert · Digitale Checklisten · TÜV & DEKRA Termine'),
+
+    n(50, 'Mieteinnahmen\n€ 184k/Mon', 'finance', 'Brutto-Mieteinnahmen inkl. NK-Vorauszahlungen · Trend: +2,4% YoY'),
+    n(51, 'Fixkosten\n€ 71k/Mon', 'finance', 'Personal, Energie, Versicherungen, Instandhaltungsrücklage'),
+    n(52, 'Rücklage\n€ 9.600/Mon', 'finance', 'Instandhaltungsrücklage · €67/Einheit · Zielbestand €480.000'),
+  ]);
+
+  const edges = new vis.DataSet([
+    { from: 1, to: 10, label: 'verwaltet', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 1, to: 11, label: 'verwaltet', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 1, to: 12, label: 'verwaltet', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 1, to: 13, label: 'verwaltet', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 1, to: 20, label: 'steuert', arrows: 'to', color: { color: '#c9a84c', opacity: .7 } },
+    { from: 1, to: 22, label: 'verantwortet', arrows: 'to', color: { color: '#c9a84c', opacity: .7 } },
+    { from: 1, to: 30, label: 'nutzt', arrows: 'to', color: { color: '#d4614a', opacity: .6 } },
+    { from: 1, to: 4, label: 'führt', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 1, to: 5, label: 'führt', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 4, to: 10, label: 'betreut', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 4, to: 11, label: 'betreut', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 5, to: 22, label: 'erstellt', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 5, to: 32, label: 'nutzt', arrows: 'to', color: { color: '#d4614a', opacity: .6 } },
+    { from: 2, to: 31, label: 'nutzt', arrows: 'to', color: { color: '#7aab8c', opacity: .7 } },
+    { from: 2, to: 21, label: 'meldet', arrows: 'to', color: { color: '#7aab8c', opacity: .7 } },
+    { from: 2, to: 40, label: 'unterzeichnet', arrows: 'to', color: { color: '#a47abd', opacity: .7 } },
+    { from: 10, to: 21, label: 'Tickets', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 11, to: 21, label: 'Tickets', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 20, to: 40, label: 'erzeugt', arrows: 'to', color: { color: '#a47abd', opacity: .6 } },
+    { from: 20, to: 41, label: 'erzeugt', arrows: 'to', color: { color: '#a47abd', opacity: .6 } },
+    { from: 22, to: 42, label: 'erzeugt', arrows: 'to', color: { color: '#a47abd', opacity: .6 } },
+    { from: 21, to: 43, label: 'referenziert', arrows: 'to', color: { color: '#a47abd', opacity: .6 } },
+    { from: 30, to: 31, label: 'steuert', arrows: 'to', color: { color: '#d4614a', opacity: .6 } },
+    { from: 30, to: 32, label: 'exportiert', arrows: 'to', color: { color: '#d4614a', opacity: .6 } },
+    { from: 23, to: 34, label: 'ruft ab', arrows: 'to', color: { color: '#d4614a', opacity: .6 } },
+    { from: 20, to: 23, label: 'beinhaltet', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 30, to: 33, label: 'publiziert', arrows: 'to', color: { color: '#d4614a', opacity: .6 } },
+    { from: 2, to: 50, label: 'zahlt', arrows: 'to', color: { color: '#d4a44c', opacity: .7 } },
+    { from: 50, to: 3, label: 'fließt an', arrows: 'to', color: { color: '#d4a44c', opacity: .7 } },
+    { from: 50, to: 51, label: 'gegenübergestellt', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 51, to: 52, label: 'enthält', arrows: 'to', color: { color: '#2a302d' } },
+    { from: 10, to: 52, label: 'Rücklage', arrows: 'to', color: { color: '#d4a44c', opacity: .5 } },
+    { from: 3, to: 1, label: 'beauftragt', arrows: 'to', color: { color: '#c9a84c', opacity: .7 } },
+    { from: 1, to: 3, label: 'berichtet an', arrows: 'to', color: { color: '#c9a84c', opacity: .7 } },
+  ]);
+
   const container = document.getElementById('kg-container');
-  const data = { nodes: new vis.DataSet([{id: 1, label: 'Christian', color: '#c9a84c'}]), edges: new vis.DataSet([]) };
-  new vis.Network(container, data, {});
+  if (!container) return;
+
+  const network = new vis.Network(container, { nodes, edges }, {
+    physics: {
+      enabled: true,
+      forceAtlas2Based: { gravitationalConstant: -50, centralGravity: .005, springLength: 120, springConstant: .04, damping: .7 },
+      solver: 'forceAtlas2Based', stabilization: { iterations: 150 }
+    },
+    interaction: { hover: true, tooltipDelay: 200 },
+    edges: { font: { size: 10, color: '#4a5550', face: 'DM Mono', align: 'middle' }, smooth: { type: 'continuous', roundness: .3 }, width: 1.5, selectionWidth: 3, hoverWidth: 2.5 },
+    nodes: { borderWidthSelected: 3 },
+    layout: { improvedLayout: true }
+  });
+
+  network.on('click', params => {
+    if (params.nodes.length) {
+      const node = nodes.get(params.nodes[0]);
+      const detail = document.getElementById('kg-detail');
+      const content = document.getElementById('kg-detail-content');
+      if (detail && content) {
+        detail.style.display = 'block';
+        const safeLabel = escapeHtml(node.label.replace(/\n/g, ' '));
+        const safeInfo = escapeHtml(node.info || 'Keine weiteren Informationen.');
+        content.innerHTML = `<span style="color:var(--gold);font-size:.8rem">${safeLabel}</span><br><br>${safeInfo}`;
+      }
+    }
+  });
 }
+
+// ── Initialisierung beim Laden der Seite ──
+window.addEventListener('DOMContentLoaded', () => {
+  showTab('overview');
+  
+  // Wichtig: Auch Pie-Tab Charts im Hintergrund triggern, damit wir sie updaten können,
+  // falls sie nicht schon besucht wurden.
+  initPieCharts(); 
+});
 </script>
 </body>
 </html>
