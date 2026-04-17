@@ -19,8 +19,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
 <style>
   :root {
@@ -140,69 +140,23 @@
     font-family: 'Cormorant Garamond', serif;
   }
 
-  /* ── Dropzone ── */
+  /* ── NEU: Dezente Dropzone & Toast ── */
   .dropzone {
-    border: 2px dashed var(--border);
-    border-radius: var(--r);
-    padding: 2.5rem 2rem;
-    text-align: center;
-    background: rgba(20, 24, 22, 0.5);
-    margin-bottom: 2rem;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
+    background: var(--surface); border: 1px dashed var(--border); border-radius: var(--r);
+    padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem;
+    margin-bottom: 2rem; transition: all 0.25s; cursor: pointer; letter-spacing: 0.05em;
   }
-  .dropzone.dragover {
-    border-color: var(--gold);
-    background: rgba(201, 168, 76, 0.05);
-    transform: scale(1.01);
+  .dropzone.hover, .dropzone:hover { border-color: var(--gold); background: rgba(201,168,76,.05); color: var(--gold); }
+  
+  #toast {
+    visibility: hidden; min-width: 250px; background: var(--surface); color: var(--gold);
+    text-align: center; border: 1px solid var(--border); border-radius: var(--r);
+    padding: 1rem; position: fixed; z-index: 1000; right: 2rem; bottom: 2rem;
+    font-size: 0.85rem; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   }
-  .dropzone .dz-icon {
-    font-size: 2rem;
-    color: var(--gold);
-  }
-  .dropzone .dz-title {
-    font-size: 0.9rem;
-    color: var(--text);
-    font-weight: 500;
-  }
-  .dropzone .dz-sub {
-    font-size: 0.7rem;
-    color: var(--muted);
-  }
-
-  /* ── Toast Notifications ── */
-  .toast-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .toast {
-    background: var(--surface);
-    border-left: 4px solid var(--gold);
-    color: var(--text);
-    padding: 1rem 1.5rem;
-    border-radius: 6px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    font-size: 0.8rem;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-  .toast.show {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  .toast.success { border-left-color: var(--sage); }
-  .toast.error { border-left-color: var(--accent); }
+  #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+  @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 2rem; opacity: 1;} }
+  @keyframes fadeout { from {bottom: 2rem; opacity: 1;} to {bottom: 0; opacity: 0;} }
 
   .card {
     background: var(--card);
@@ -302,7 +256,7 @@
   .c4-ext-box .etype { font-size: .6rem; color: var(--accent); }
   .c4-ext-box .edesc { font-size: .63rem; color: var(--text2); margin-top: .2rem; }
 
-  /* ── Fixkosten ── */
+  /* ── Fixkosten / Mermaid Chart ── */
   .fixkosten-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem; margin-bottom: 1.5rem;
@@ -357,12 +311,10 @@
     background: var(--card); border: 1px solid var(--border);
     border-radius: var(--r); padding: 1.2rem 1.4rem;
     border-top: 2px solid var(--gold);
-    transition: all 0.3s;
   }
   .stat-val {
     font-family: 'Playfair Display', serif;
     font-size: 1.8rem; color: var(--text);
-    transition: color 0.3s;
   }
   .stat-label { font-size: .63rem; color: var(--text2); margin-top: .3rem; letter-spacing: .1em; text-transform: uppercase; }
   .stat-change { font-size: .65rem; color: var(--sage); margin-top: .4rem; }
@@ -401,7 +353,7 @@
 </header>
 
 <nav role="tablist" aria-label="Dashboard-Navigation">
-  <button role="tab" data-tab="overview" aria-selected="true" aria-controls="overview" id="tab-overview">
+  <button role="tab" data-tab="overview" aria-selected="true" aria-controls="overview" id="tab-overview" class="active">
     <span class="tab-icon" aria-hidden="true">📊</span>Übersicht
   </button>
   <button role="tab" data-tab="bpmn" aria-selected="false" aria-controls="bpmn" id="tab-bpmn">
@@ -423,28 +375,28 @@
 
 <main>
 
-  <section id="overview" class="section" role="tabpanel" aria-labelledby="tab-overview">
+  <section id="overview" class="section active" role="tabpanel" aria-labelledby="tab-overview">
     <h2 class="section-title">Dashboard Übersicht</h2>
     <p class="section-desc">Echtzeit-Kennzahlen der Immobilienverwaltung Hoffmann — alle Objekte auf einen Blick.</p>
 
     <div class="stats-row">
       <div class="stat-card">
-        <div class="stat-val" id="kpi-einheiten">142</div>
+        <div class="stat-val">142</div>
         <div class="stat-label">Verwaltete Einheiten</div>
         <div class="stat-change">↑ +6 seit Q1</div>
       </div>
       <div class="stat-card" style="border-top-color: var(--sage)">
-        <div class="stat-val" id="kpi-einnahmen">€ 184k</div>
+        <div class="stat-val">€ 184k</div>
         <div class="stat-label">Monatl. Mieteinnahmen</div>
-        <div class="stat-change" id="kpi-einnahmen-change" style="color:var(--sage)">↑ +2,4 %</div>
+        <div class="stat-change" style="color:var(--sage)">↑ +2,4 %</div>
       </div>
       <div class="stat-card" style="border-top-color: var(--accent)">
-        <div class="stat-val" id="kpi-tickets">7</div>
+        <div class="stat-val">7</div>
         <div class="stat-label">Offene Tickets</div>
         <div class="stat-change" style="color:var(--accent)">↓ 3 kritisch</div>
       </div>
       <div class="stat-card" style="border-top-color: #7ab0d4">
-        <div class="stat-val" id="kpi-quote">96,5 %</div>
+        <div class="stat-val">96,5 %</div>
         <div class="stat-label">Vermietungsquote</div>
         <div class="stat-change" style="color:#7ab0d4">Ø Markt: 91 %</div>
       </div>
@@ -693,12 +645,6 @@ graph TD
     <h2 class="section-title">Fixkosten Übersicht</h2>
     <p class="section-desc">Monatliche Fixkostenstruktur der gesamten Verwaltung — Basis für Betriebskostenabrechnung.</p>
 
-    <div id="data-dropzone" class="dropzone">
-      <div class="dz-icon">📥</div>
-      <div class="dz-title">Daten aktualisieren (Drag & Drop)</div>
-      <div class="dz-sub">Ziehe deine aktuelle .csv oder .xlsx Bank-Export Datei hierher, um KPIs und Diagramme lokal neu zu berechnen.</div>
-    </div>
-
     <div class="fixkosten-grid" id="fk-grid"></div>
 
     <div class="card">
@@ -734,6 +680,11 @@ Gebaeude A Kaiserstrasse 12,Instandhaltungsrueckl.,2000
   <section id="pie" class="section" role="tabpanel" aria-labelledby="tab-pie">
     <h2 class="section-title">Tortendiagramme — Portfolioanalyse</h2>
     <p class="section-desc">Verteilung des Immobilienportfolios und der Einnahmenquellen im Überblick.</p>
+
+    <div id="dropzone" class="dropzone">
+      📥 Datei (.xlsx, .csv) hier ablegen <strong>oder klicken</strong>, um Portfolio-Daten zu aktualisieren.
+      <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display: none;">
+    </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
       <div class="card">
@@ -792,9 +743,13 @@ Gebaeude A Kaiserstrasse 12,Instandhaltungsrueckl.,2000
 
 </main>
 
-<div class="toast-container" id="toast-container"></div>
+<div id="toast"></div>
 
 <script>
+// ── Globale Variablen für Charts & Farben ──
+window.myCharts = { chart1: null, chart2: null, chart3: null, chart4: null };
+window.chartColors = ['#c9a84c','#7aab8c','#7ab0d4','#d4614a','#a47abd','#d4a44c','#4ac9a8','#d47a7a'];
+
 // ── Hilfsfunktionen ──
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -802,157 +757,9 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-// Tracking: welche Tabs wurden schon gerendert?
-const initializedTabs = new Set();
-// Speichere die Chart.js Instanzen global ab, damit wir sie live updaten können
-window.myCharts = {};
-
-// ── Toast Notifications ──
-function showToast(message, type = 'success') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  
-  // Reflow erzwingen
-  void toast.offsetWidth;
-  toast.classList.add('show');
-  
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 400);
-  }, 4000);
-}
-
-// ── Dropzone Logik (FileReader, SheetJS, PapaParse) ──
-const dropzone = document.getElementById('data-dropzone');
-if (dropzone) {
-  dropzone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropzone.classList.add('dragover');
-  });
-
-  dropzone.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    dropzone.classList.remove('dragover');
-  });
-
-  dropzone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropzone.classList.remove('dragover');
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      handleFileDrop(file);
-    }
-  });
-}
-
-function handleFileDrop(file) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  const reader = new FileReader();
-
-  reader.onload = function(e) {
-    try {
-      if (ext === 'csv') {
-        // PapaParse für CSV, konfiguriert für Auto-Erkennung von Trennzeichen und Datentypen
-        Papa.parse(e.target.result, {
-          header: true,
-          skipEmptyLines: true,
-          dynamicTyping: true,
-          complete: function(results) {
-            processData(results.data);
-          },
-          error: function() {
-            showToast('Fehler beim CSV-Parsing.', 'error');
-          }
-        });
-      } else if (ext === 'xlsx' || ext === 'xls') {
-        // SheetJS für Excel
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true }); // ISO Datumsformat Handling
-        const firstSheet = workbook.SheetNames[0];
-        const json = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-        processData(json);
-      } else {
-        showToast('Falsches Dateiformat. Bitte .csv oder .xlsx verwenden.', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Kritischer Fehler beim Auslesen.', 'error');
-    }
-  };
-
-  if (ext === 'csv') {
-    reader.readAsText(file);
-  } else {
-    reader.readAsArrayBuffer(file);
-  }
-}
-
-function processData(data) {
-  if (!data || data.length === 0) {
-    showToast('Die Datei ist leer oder konnte nicht gelesen werden.', 'error');
-    return;
-  }
-
-  // Fuzzy-Suche nach relevanten Spaltennamen
-  const keys = Object.keys(data[0]);
-  const betragKey = keys.find(k => k.toLowerCase().includes('betrag') || k.toLowerCase().includes('summe')) || keys[1];
-  const katKey = keys.find(k => k.toLowerCase().includes('kategorie') || k.toLowerCase().includes('zweck') || k.toLowerCase().includes('art')) || keys[0];
-
-  let totalEinnahmen = 0;
-  const categorySums = {};
-
-  data.forEach(row => {
-    const betrag = parseFloat(row[betragKey]);
-    const kat = row[katKey] ? String(row[katKey]).trim() : 'Sonstiges';
-    
-    // Logik: Summierung pro Kategorie
-    if (!isNaN(betrag) && betrag > 0) { 
-      totalEinnahmen += betrag;
-      categorySums[kat] = (categorySums[kat] || 0) + betrag;
-    }
-  });
-
-  // 1. KPI Update per DOM Manipulation
-  const einnahmenKpi = document.getElementById('kpi-einnahmen');
-  const einnahmenChange = document.getElementById('kpi-einnahmen-change');
-  
-  if (totalEinnahmen > 0 && einnahmenKpi && einnahmenChange) {
-    // Formatierung in k (Tausender)
-    const formatted = '€ ' + (totalEinnahmen / 1000).toFixed(1).replace('.', ',') + 'k';
-    einnahmenKpi.textContent = formatted;
-    einnahmenKpi.style.color = 'var(--gold)'; // Visuelles Feedback
-    
-    einnahmenChange.textContent = '↑ Live Update';
-    einnahmenChange.style.color = 'var(--sage)';
-  }
-
-  // 2. Chart.js (Pie 1) Update
-  if (window.myCharts['pie1']) {
-    const labels = Object.keys(categorySums);
-    const chartData = Object.values(categorySums);
-    
-    // Fallback Farben
-    const colors = ['#c9a84c','#7aab8c','#7ab0d4','#d4614a','#a47abd','#d4a44c','#4ac9a8','#d47a7a'];
-    const myColors = labels.map((_, i) => colors[i % colors.length]);
-
-    // Chart updaten
-    window.myCharts['pie1'].data.labels = labels;
-    window.myCharts['pie1'].data.datasets[0].data = chartData;
-    window.myCharts['pie1'].data.datasets[0].backgroundColor = myColors;
-    window.myCharts['pie1'].update();
-
-    // Legende neu generieren
-    makeLegend('legend1', labels, chartData, myColors, '€');
-  }
-
-  showToast('Daten erfolgreich verarbeitet! Cockpit aktualisiert.');
-}
-
 // ── Tab Navigation (Event Delegation) ──
+const initializedTabs = new Set();
+
 function showTab(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('nav button[role="tab"]').forEach(b => {
@@ -997,11 +804,13 @@ function showTab(id) {
   if (id === 'kg') setTimeout(initKG, 100);
 }
 
+// Event Delegation für Navigation
 document.querySelector('nav').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-tab]');
   if (btn) showTab(btn.dataset.tab);
 });
 
+// Keyboard-Navigation zwischen Tabs
 document.querySelector('nav').addEventListener('keydown', (e) => {
   const tabs = Array.from(document.querySelectorAll('nav button[role="tab"]'));
   const current = tabs.indexOf(document.activeElement);
@@ -1042,6 +851,8 @@ if (typeof mermaid !== 'undefined') {
     gantt: { axisFormat: '%b %y' },
     sankey: { width: 800, height: 650 }
   });
+} else {
+  console.error('Mermaid library not loaded.');
 }
 
 // ── Fixkosten Data ──
@@ -1063,7 +874,6 @@ const fixkostenData = [
 function initFixkosten() {
   const grid = document.getElementById('fk-grid');
   if (!grid || grid.children.length) return;
-
   const fragment = document.createDocumentFragment();
   fixkostenData.forEach(fk => {
     const item = document.createElement('div');
@@ -1079,14 +889,14 @@ function initFixkosten() {
 }
 initFixkosten();
 
-// ── Globale Legenden-Funktion für Chart.js Updates ──
-function makeLegend(id, labels, data, myColors, unit) {
+// ── Legenden Generator (Global verfügbar gemacht für Dropzone) ──
+window.makeLegendGlobal = function(id, labels, data, myColors, unit) {
   const total = data.reduce((a, b) => a + b, 0);
   const el = document.getElementById(id);
   if (!el) return;
   const fragment = document.createDocumentFragment();
   labels.forEach((l, i) => {
-    const pct = ((data[i] / total) * 100).toFixed(1);
+    const pct = total > 0 ? ((data[i] / total) * 100).toFixed(1) : 0;
     const val = data[i].toLocaleString('de-DE');
     const u = unit ? ` ${unit}` : '';
     const item = document.createElement('div');
@@ -1099,7 +909,7 @@ function makeLegend(id, labels, data, myColors, unit) {
   });
   el.innerHTML = '';
   el.appendChild(fragment);
-}
+};
 
 // ── Pie Charts ──
 let pieInited = false;
@@ -1108,84 +918,60 @@ function initPieCharts() {
   if (typeof Chart === 'undefined') return;
   pieInited = true;
 
-  const colors = ['#c9a84c','#7aab8c','#7ab0d4','#d4614a','#a47abd','#d4a44c','#4ac9a8','#d47a7a'];
-
   function filterData(labels, data) {
     const fLabels = [], fData = [], fColors = [];
     for (let i = 0; i < data.length; i++) {
       if (data[i] > 0) {
-        fLabels.push(labels[i]);
-        fData.push(data[i]);
-        fColors.push(colors[i % colors.length]);
+        fLabels.push(labels[i]); fData.push(data[i]); fColors.push(window.chartColors[i % window.chartColors.length]);
       }
     }
     return { fLabels, fData, fColors };
   }
 
   const baseOpts = (unit) => ({
-    responsive: true,
-    maintainAspectRatio: true,
+    responsive: true, maintainAspectRatio: true, cutout: '45%', animation: { duration: 800 },
     plugins: {
-      legend: { display: false },
-      title: { display: false },
-      tooltip: {
-        backgroundColor: '#1a1e1c', borderColor: '#2a302d', borderWidth: 1,
-        titleColor: '#c9a84c', bodyColor: '#e8ede9', padding: 10,
+      legend: { display: false }, title: { display: false },
+      tooltip: { backgroundColor: '#1a1e1c', borderColor: '#2a302d', borderWidth: 1, titleColor: '#c9a84c', bodyColor: '#e8ede9', padding: 10,
         callbacks: {
           label: ctx => {
-            const val = ctx.parsed;
-            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-            const pct = ((val / total) * 100).toFixed(1);
-            const u = unit ? ` ${unit}` : '';
+            const val = ctx.parsed; const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const pct = ((val / total) * 100).toFixed(1); const u = unit ? ` ${unit}` : '';
             return ` ${ctx.label}: ${val.toLocaleString('de-DE')}${u} (${pct}%)`;
           }
         }
       }
-    },
-    cutout: '45%',
-    animation: { duration: 800 }
+    }
   });
 
   function makePie(id, labels, data, myColors, unit) {
     const canvas = document.getElementById(id);
     if (!canvas) return null;
-    const ds = { data, backgroundColor: myColors, borderColor: '#141816', borderWidth: 3 };
-    // Instanzen in window.myCharts speichern
-    window.myCharts[id] = new Chart(canvas, { type: 'doughnut', data: { labels, datasets: [ds] }, options: baseOpts(unit) });
-    return window.myCharts[id];
+    return new Chart(canvas, { type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: myColors, borderColor: '#141816', borderWidth: 3 }] }, options: baseOpts(unit) });
   }
 
-  // Initialisieren wir Chart 1
-  const p1lRaw = ['Wohnungen', 'Gewerbe', 'Garagen/Stellplätze', 'Lager'];
-  const p1dRaw = [112000, 38000, 18000, 16000];
-  const f1 = filterData(p1lRaw, p1dRaw);
-  makePie('pie1', f1.fLabels, f1.fData, f1.fColors, '€');
-  makeLegend('legend1', f1.fLabels, f1.fData, f1.fColors, '€');
+  // Pie 1
+  const p1lRaw = ['Wohnungen', 'Gewerbe', 'Garagen/Stellplätze', 'Lager']; const p1dRaw = [112000, 38000, 18000, 16000]; const f1 = filterData(p1lRaw, p1dRaw);
+  window.myCharts.chart1 = makePie('pie1', f1.fLabels, f1.fData, f1.fColors, '€'); window.makeLegendGlobal('legend1', f1.fLabels, f1.fData, f1.fColors, '€');
 
-  const p2lRaw = ['Personal', 'Instandhaltung', 'Versicherung', 'Energie', 'IT & Verwaltung', 'Sonstiges'];
-  const p2dRaw = [18500, 9600, 5900, 14400, 1850, 5750];
-  const f2 = filterData(p2lRaw, p2dRaw);
-  makePie('pie2', f2.fLabels, f2.fData, f2.fColors, '€');
-  makeLegend('legend2', f2.fLabels, f2.fData, f2.fColors, '€');
+  // Pie 2
+  const p2lRaw = ['Personal', 'Instandhaltung', 'Versicherung', 'Energie', 'IT & Verwaltung', 'Sonstiges']; const p2dRaw = [18500, 9600, 5900, 14400, 1850, 5750]; const f2 = filterData(p2lRaw, p2dRaw);
+  window.myCharts.chart2 = makePie('pie2', f2.fLabels, f2.fData, f2.fColors, '€'); window.makeLegendGlobal('legend2', f2.fLabels, f2.fData, f2.fColors, '€');
 
-  const p3lRaw = ['Unbefristete Verträge', 'Zeitverträge', 'Gewerbemietverträge', 'Kurzzeitmiete'];
-  const p3dRaw = [98, 21, 17, 6];
-  const f3 = filterData(p3lRaw, p3dRaw);
-  makePie('pie3', f3.fLabels, f3.fData, f3.fColors, '');
-  makeLegend('legend3', f3.fLabels, f3.fData, f3.fColors, '');
+  // Pie 3
+  const p3lRaw = ['Unbefristete Verträge', 'Zeitverträge', 'Gewerbemietverträge', 'Kurzzeitmiete']; const p3dRaw = [98, 21, 17, 6]; const f3 = filterData(p3lRaw, p3dRaw);
+  window.myCharts.chart3 = makePie('pie3', f3.fLabels, f3.fData, f3.fColors, ''); window.makeLegendGlobal('legend3', f3.fLabels, f3.fData, f3.fColors, '');
 
-  const p4lRaw = ['Erledigt', 'In Bearbeitung', 'Offen', 'Eskaliert'];
-  const p4dRaw = [214, 18, 7, 3];
-  const f4 = filterData(p4lRaw, p4dRaw);
-  makePie('pie4', f4.fLabels, f4.fData, f4.fColors, '');
-  makeLegend('legend4', f4.fLabels, f4.fData, f4.fColors, '');
+  // Pie 4
+  const p4lRaw = ['Erledigt', 'In Bearbeitung', 'Offen', 'Eskaliert']; const p4dRaw = [214, 18, 7, 3]; const f4 = filterData(p4lRaw, p4dRaw);
+  window.myCharts.chart4 = makePie('pie4', f4.fLabels, f4.fData, f4.fColors, ''); window.makeLegendGlobal('legend4', f4.fLabels, f4.fData, f4.fColors, '');
 }
 
 // ── Knowledge Graph ──
 let kgInited = false;
 function initKG() {
   if (kgInited) return;
-  if (typeof vis === 'undefined') return;
+  if (typeof vis === 'undefined') { console.error('vis-network library not loaded.'); return; }
   kgInited = true;
 
   const COLORS = {
@@ -1198,49 +984,42 @@ function initKG() {
   };
 
   function n(id, label, type, info) {
-    info = info || label;
-    const c = COLORS[type];
+    info = info || label; const c = COLORS[type];
     return {
       id, label, title: info,
       color: { background: c.bg, border: c.border, highlight: { background: c.border, border: '#fff' } },
       font: { color: c.text, size: 12, face: 'DM Mono' },
       shape: 'box', borderWidth: 2, margin: 8,
-      shadow: { enabled: true, size: 10, x: 3, y: 3, color: 'rgba(0,0,0,.5)' },
-      info
+      shadow: { enabled: true, size: 10, x: 3, y: 3, color: 'rgba(0,0,0,.5)' }, info
     };
   }
 
   const nodes = new vis.DataSet([
-    n(1, 'Christian\nHoffmann', 'person', 'Geschäftsführer · Immobilienverwaltung Hoffmann · Hauptverantwortlich für alle operativen Entscheidungen'),
-    n(2, 'Mieter', 'person', 'Endkunden · 142 aktive Mietverhältnisse · Kommunikation via Portal'),
-    n(3, 'Eigentümer', 'person', 'Auftraggeber · Empfänger der Abrechnungen und Berichte'),
-    n(4, 'Hausmeister', 'person', 'Max Berger · Zuständig für Geb. A & B · Erster Ansprechpartner vor Ort'),
-    n(5, 'Buchhalterin', 'person', 'Sandra Koch · Nebenkostenabrechnung & DATEV-Schnittstelle'),
-
-    n(10, 'Geb. A\nKaiserstr. 12', 'object', 'Baujahr 1978 · 48 Wohneinheiten · Zentralheizung saniert 2021'),
-    n(11, 'Geb. B\nRingweg 4', 'object', 'Baujahr 1993 · 36 Wohneinheiten · 2 Gewerbeeinheiten EG'),
-    n(12, 'Geb. C\nParkallee 8', 'object', 'Baujahr 2005 · 28 Wohneinheiten · Tiefgarage 30 Stellplätze'),
-    n(13, 'Gewerbe-\neinheiten', 'object', '17 Gewerbeeinheiten gesamt · 3 Standorte · Büro & Einzelhandel'),
-
-    n(20, 'Vermietungs-\nprozess', 'process', 'BPMN-gesteuert · Anfrage → Bonitätsprüfung → Vertragsabschluss → Übergabe'),
-    n(21, 'Instandhaltung', 'process', 'Ticketbasiert · 3 Prioritätsstufen · SLA: Kritisch <4h, Normal <72h'),
-    n(22, 'Nebenkostenabr.', 'process', 'Jährlich zum 31. März · Automatisiert via Buchhaltungs-API · DATEV-Export'),
-    n(23, 'Bonitätsprüfung', 'process', 'Schufa-API Integration · Automatisierter Score · Schwellenwert 650'),
-
-    n(30, 'IVS Admin\nBackend', 'system', 'Zentrales Verwaltungssystem · Node.js/React · PostgreSQL'),
-    n(31, 'Mieter-Portal', 'system', 'Self-Service Web-App · Tickets, Dokumente, Zahlungsübersicht'),
-    n(32, 'DATEV', 'system', 'Externes Buchhaltungssystem · Steuerberater-Zugang · Jahresabschluss'),
-    n(33, 'Immoscout24', 'system', 'Inseratsplattform · Automatischer Export bei Leerstand via API'),
-    n(34, 'Schufa API', 'system', 'Bonitäts-Echtzeit-Abfrage · REST API · Response <2s'),
-
-    n(40, 'Mietvertrag', 'document', 'Standardformular · PDF-generiert · Digital signierbar · Archiviert in MinIO'),
-    n(41, 'Übergabe-\nprotokoll', 'document', 'Ein- und Auszug · Fotodokumentation · Zählerstände'),
-    n(42, 'Betriebskosten-\nabrechnung', 'document', 'Jährlich · Rechtlich geprüft · Einspruchsfrist 12 Monate'),
-    n(43, 'Wartungsplan', 'document', 'Gantt-basiert · Digitale Checklisten · TÜV & DEKRA Termine'),
-
-    n(50, 'Mieteinnahmen\n€ 184k/Mon', 'finance', 'Brutto-Mieteinnahmen inkl. NK-Vorauszahlungen · Trend: +2,4% YoY'),
-    n(51, 'Fixkosten\n€ 71k/Mon', 'finance', 'Personal, Energie, Versicherungen, Instandhaltungsrücklage'),
-    n(52, 'Rücklage\n€ 9.600/Mon', 'finance', 'Instandhaltungsrücklage · €67/Einheit · Zielbestand €480.000'),
+    n(1, 'Christian\nHoffmann', 'person', 'Geschäftsführer · Immobilienverwaltung Hoffmann'),
+    n(2, 'Mieter', 'person', 'Endkunden · 142 aktive Mietverhältnisse'),
+    n(3, 'Eigentümer', 'person', 'Auftraggeber · Empfänger der Abrechnungen'),
+    n(4, 'Hausmeister', 'person', 'Max Berger · Zuständig für Geb. A & B'),
+    n(5, 'Buchhalterin', 'person', 'Sandra Koch · Nebenkostenabrechnung'),
+    n(10, 'Geb. A\nKaiserstr. 12', 'object', 'Baujahr 1978 · 48 Wohneinheiten'),
+    n(11, 'Geb. B\nRingweg 4', 'object', 'Baujahr 1993 · 36 Wohneinheiten'),
+    n(12, 'Geb. C\nParkallee 8', 'object', 'Baujahr 2005 · 28 Wohneinheiten'),
+    n(13, 'Gewerbe-\neinheiten', 'object', '17 Gewerbeeinheiten gesamt'),
+    n(20, 'Vermietungs-\nprozess', 'process', 'BPMN-gesteuert'),
+    n(21, 'Instandhaltung', 'process', 'Ticketbasiert · 3 Prioritätsstufen'),
+    n(22, 'Nebenkostenabr.', 'process', 'Jährlich zum 31. März'),
+    n(23, 'Bonitätsprüfung', 'process', 'Schufa-API Integration'),
+    n(30, 'IVS Admin\nBackend', 'system', 'Zentrales Verwaltungssystem'),
+    n(31, 'Mieter-Portal', 'system', 'Self-Service Web-App'),
+    n(32, 'DATEV', 'system', 'Externes Buchhaltungssystem'),
+    n(33, 'Immoscout24', 'system', 'Inseratsplattform'),
+    n(34, 'Schufa API', 'system', 'Bonitäts-Echtzeit-Abfrage'),
+    n(40, 'Mietvertrag', 'document', 'Standardformular · PDF-generiert'),
+    n(41, 'Übergabe-\nprotokoll', 'document', 'Ein- und Auszug'),
+    n(42, 'Betriebskosten-\nabrechnung', 'document', 'Jährlich'),
+    n(43, 'Wartungsplan', 'document', 'Gantt-basiert'),
+    n(50, 'Mieteinnahmen\n€ 184k/Mon', 'finance', 'Brutto-Mieteinnahmen'),
+    n(51, 'Fixkosten\n€ 71k/Mon', 'finance', 'Personal, Energie, Versicherungen'),
+    n(52, 'Rücklage\n€ 9.600/Mon', 'finance', 'Instandhaltungsrücklage'),
   ]);
 
   const edges = new vis.DataSet([
@@ -1285,8 +1064,7 @@ function initKG() {
 
   const network = new vis.Network(container, { nodes, edges }, {
     physics: {
-      enabled: true,
-      forceAtlas2Based: { gravitationalConstant: -50, centralGravity: .005, springLength: 120, springConstant: .04, damping: .7 },
+      enabled: true, forceAtlas2Based: { gravitationalConstant: -50, centralGravity: .005, springLength: 120, springConstant: .04, damping: .7 },
       solver: 'forceAtlas2Based', stabilization: { iterations: 150 }
     },
     interaction: { hover: true, tooltipDelay: 200 },
@@ -1311,13 +1089,108 @@ function initKG() {
 }
 
 // ── Initialisierung beim Laden der Seite ──
-window.addEventListener('DOMContentLoaded', () => {
-  showTab('overview');
+window.addEventListener('DOMContentLoaded', () => { showTab('overview'); });
+
+
+// ── NEU: Dropzone & File-Click Logik (NUR FÜR TORTENDIAGRAMME) ──
+const dz = document.getElementById('dropzone');
+const fi = document.getElementById('fileInput');
+
+if (dz && fi) {
+  dz.onclick = () => fi.click();
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add('hover'); };
+  dz.ondragleave = () => dz.classList.remove('hover');
   
-  // Wichtig: Auch Pie-Tab Charts im Hintergrund triggern, damit wir sie updaten können,
-  // falls sie nicht schon besucht wurden.
-  initPieCharts(); 
-});
+  dz.ondrop = e => { 
+    e.preventDefault(); 
+    dz.classList.remove('hover'); 
+    handleFile(e.dataTransfer.files[0]); 
+  };
+
+  fi.onchange = e => { 
+    handleFile(e.target.files[0]); 
+    fi.value = ''; 
+  };
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+
+  reader.onload = (event) => {
+    try {
+      let rows = [];
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        const text = new TextDecoder().decode(event.target.result);
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        rows = parsed.data;
+      } else {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+      }
+      updateAllPieCharts(rows);
+      showToast(`Daten geladen: Alle Diagramme aktualisiert!`);
+    } catch (err) {
+      console.error(err);
+      showToast("Fehler beim Verarbeiten der Datei.");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function updateAllPieCharts(rows) {
+  if (!window.myCharts.chart1) return; 
+
+  let data1 = { 'Wohnungen': 0, 'Gewerbe': 0, 'Garagen/Stellplätze': 0, 'Lager': 0 };
+  let data2 = { 'Personal': 0, 'Instandhaltung': 0, 'Versicherung': 0, 'Energie': 0, 'IT & Verwaltung': 0, 'Sonstiges': 0 };
+  let data3 = { 'Unbefristete Verträge': 0, 'Zeitverträge': 0, 'Gewerbemietverträge': 0, 'Kurzzeitmiete': 0 };
+  let data4 = { 'Erledigt': 0, 'In Bearbeitung': 0, 'Offen': 0, 'Eskaliert': 0 };
+
+  rows.forEach(row => {
+    const diag = row['Diagramm'];
+    const kat = row['Kategorie'];
+    const val = parseFloat(row['Wert'] || 0);
+
+    if (diag === 'Mieteinnahmen' && data1[kat] !== undefined) data1[kat] += val;
+    if (diag === 'Kostenverteilung' && data2[kat] !== undefined) data2[kat] += val;
+    if (diag === 'Vertragsarten' && data3[kat] !== undefined) data3[kat] += val;
+    if (diag === 'Ticket-Status' && data4[kat] !== undefined) data4[kat] += val;
+  });
+
+  function refreshChart(chartObj, legendId, dataObj, unit) {
+    const fLabels = [], fData = [], fColors = [];
+    let i = 0;
+    for (const [key, value] of Object.entries(dataObj)) {
+      if (value > 0) {
+        fLabels.push(key); fData.push(value); fColors.push(window.chartColors[i % window.chartColors.length]);
+      }
+      i++;
+    }
+    chartObj.data.labels = fLabels;
+    chartObj.data.datasets[0].data = fData;
+    chartObj.data.datasets[0].backgroundColor = fColors;
+    chartObj.update();
+    window.makeLegendGlobal(legendId, fLabels, fData, fColors, unit);
+  }
+
+  refreshChart(window.myCharts.chart1, 'legend1', data1, '€');
+  refreshChart(window.myCharts.chart2, 'legend2', data2, '€');
+  refreshChart(window.myCharts.chart3, 'legend3', data3, '');
+  refreshChart(window.myCharts.chart4, 'legend4', data4, '');
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if(!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    document.body.appendChild(t);
+  }
+  t.innerText = msg;
+  t.className = 'show';
+  setTimeout(() => t.className = t.className.replace('show', ''), 3000);
+}
 </script>
 </body>
 </html>
