@@ -140,7 +140,7 @@
     font-family: 'Cormorant Garamond', serif;
   }
 
-  /* ── NEU: Dropzone ── */
+  /* ── Dropzone ── */
   .dropzone {
     border: 2px dashed var(--border);
     border-radius: var(--r);
@@ -175,7 +175,7 @@
     color: var(--muted);
   }
 
-  /* ── NEU: Toast Notifications ── */
+  /* ── Toast Notifications ── */
   .toast-container {
     position: fixed;
     bottom: 20px;
@@ -426,12 +426,6 @@
   <section id="overview" class="section" role="tabpanel" aria-labelledby="tab-overview">
     <h2 class="section-title">Dashboard Übersicht</h2>
     <p class="section-desc">Echtzeit-Kennzahlen der Immobilienverwaltung Hoffmann — alle Objekte auf einen Blick.</p>
-
-    <div id="data-dropzone" class="dropzone">
-      <div class="dz-icon">📥</div>
-      <div class="dz-title">Daten aktualisieren (Drag & Drop)</div>
-      <div class="dz-sub">Ziehe deine aktuelle .csv oder .xlsx Bank-Export Datei hierher, um KPIs und Diagramme lokal neu zu berechnen.</div>
-    </div>
 
     <div class="stats-row">
       <div class="stat-card">
@@ -699,6 +693,12 @@ graph TD
     <h2 class="section-title">Fixkosten Übersicht</h2>
     <p class="section-desc">Monatliche Fixkostenstruktur der gesamten Verwaltung — Basis für Betriebskostenabrechnung.</p>
 
+    <div id="data-dropzone" class="dropzone">
+      <div class="dz-icon">📥</div>
+      <div class="dz-title">Daten aktualisieren (Drag & Drop)</div>
+      <div class="dz-sub">Ziehe deine aktuelle .csv oder .xlsx Bank-Export Datei hierher, um KPIs und Diagramme lokal neu zu berechnen.</div>
+    </div>
+
     <div class="fixkosten-grid" id="fk-grid"></div>
 
     <div class="card">
@@ -920,7 +920,7 @@ function processData(data) {
   const einnahmenKpi = document.getElementById('kpi-einnahmen');
   const einnahmenChange = document.getElementById('kpi-einnahmen-change');
   
-  if (totalEinnahmen > 0) {
+  if (totalEinnahmen > 0 && einnahmenKpi && einnahmenChange) {
     // Formatierung in k (Tausender)
     const formatted = '€ ' + (totalEinnahmen / 1000).toFixed(1).replace('.', ',') + 'k';
     einnahmenKpi.textContent = formatted;
@@ -1150,7 +1150,7 @@ function initPieCharts() {
     const canvas = document.getElementById(id);
     if (!canvas) return null;
     const ds = { data, backgroundColor: myColors, borderColor: '#141816', borderWidth: 3 };
-    // Neu: Instanzen in window.myCharts speichern
+    // Instanzen in window.myCharts speichern
     window.myCharts[id] = new Chart(canvas, { type: 'doughnut', data: { labels, datasets: [ds] }, options: baseOpts(unit) });
     return window.myCharts[id];
   }
